@@ -5,6 +5,10 @@ from tkinter.filedialog import askopenfilename
 from dataclasses import dataclass
 import random
 from pathlib import Path
+import itertools
+from dataclasses import dataclass, field
+from typing import List
+
 
 #### This is for BotC
 
@@ -40,6 +44,7 @@ class Character:
     other_night_order: int
     firstNightReminder: str = ""
     otherNightReminder: str = ""
+    reminders: List[str] = field(default_factory=list)
 
 
     def __repr__(self):
@@ -53,13 +58,18 @@ class Player:
     alive: bool = True
     poisoned: bool = False
     drunk: bool = False
+    effects = {}
 
     def status(self):
         flags = []
         if not self.alive: flags.append("Dead")
         if self.poisoned: flags.append("Poisoned")
         if self.drunk: flags.append("Drunk")
-        return ", ".join(flags) if flags else "Healthy"
+        for key in self.effects.keys():
+            if self.effects[key] == True:
+                flags.append(key)
+            
+        return " / ".join(flags) if flags else "Healthy"
 
 class StorytellerApp:
     def __init__(self, master):
@@ -102,6 +112,8 @@ class StorytellerApp:
         self.players: list[Player] = []
         self.bluffs: list[Character] = []
         self.day = 1
+        self.reminders = []
+        self.init_effects = {}
 
         
         self.load_character_db()
@@ -191,7 +203,8 @@ class StorytellerApp:
                     first_night_order=info.get("first_night_order", 999),
                     other_night_order=info.get("other_night_order", 999),
                     firstNightReminder=info.get("firstNightReminder", ""),
-                    otherNightReminder=info.get("otherNightReminder", "")
+                    otherNightReminder=info.get("otherNightReminder", ""),
+                    reminders=info.get("reminders","")
                 )
                 self.character_db[cid] = char
 
@@ -203,6 +216,11 @@ class StorytellerApp:
         with open(path, "r") as f:
             ids = json.load(f)
         self.script_characters = [self.character_db[c["id"]] for c in ids if c["id"] in self.character_db]
+        _reminders = [char.reminders for char in self.script_characters]
+        self.reminders = list(set(itertools.chain.from_iterable(_reminders)))
+        self.reminders.sort()
+        for remi in self.reminders:
+            self.init_effects[remi] = False
 
     def add_player_dialog(self, editing_player=None):
         text_size = 20
@@ -285,7 +303,7 @@ class StorytellerApp:
                 editing_player.team = selected_team
                 print(selected_team)
             else:
-                new_player = Player(name=name, character=char_obj, team = char_obj.team)
+                new_player = Player(name=name, character=char_obj, team = char_obj.team, effects = self.init_effects.copy())
                 self.players.append(new_player)
 
             dialog.destroy()
@@ -304,11 +322,35 @@ class StorytellerApp:
             row.grid(row=i, sticky="w")
             tk.Button(row, text="Edit", command=lambda p=player: self.add_player_dialog(editing_player=p), font=("Helvetica", text_size)).grid(row=0, column=0)
 
-            tk.Label(row, text=f"{player.name} — {player.character.name}", width=30,bg=colors[player.team], font=("Helvetica", text_size)).grid(row=0, column=2)
-            tk.Label(row, text=player.status(), width=25, font=("Helvetica", text_size)).grid(row=0, column=3)
+            tk.Label(row, text=f"{player.name} — {player.character.name}", width=20,bg=colors[player.team], font=("Helvetica", text_size)).grid(row=0, column=2)
+            tk.Label(row, text=player.status(), width=40, font=("Helvetica", text_size-8)).grid(row=0, column=3)
             tk.Button(row, text="Kill", command=lambda p=player: self.toggle_status(p, "alive"), font=("Helvetica", text_size)).grid(row=0, column=4)
+            
             tk.Button(row, text="Poison", command=lambda p=player: self.toggle_status(p, "poisoned"), font=("Helvetica", text_size)).grid(row=0, column=5)
-            tk.Button(row, text="Drunk", command=lambda p=player: self.toggle_status(p, "drunk"), font=("Helvetica", text_size)).grid(row=0, column=6)
+            #tk.Button(row, text="Drunk", command=lambda p=player: self.toggle_status(p, "drunk"), font=("Helvetica", text_size)).grid(row=0, column=6)
+            
+            effect = tk.StringVar()
+            effects_mess = "Add reminder"
+            effect.set(effects_mess)  # Initial value
+            
+
+
+            def apply_effect(var=effect,p : Player =player):
+                if var != effects_mess:
+                    self.toggle_status(p, var)
+                    #p.effects[var] = not p.effects[var]
+                    var = effects_mess # Reset dropdown
+                    print(p.effects)
+                    
+            #tk.Button(row, text="Kill", command=lambda p=player: apply_effect(p,"alive"), font=("Helvetica", text_size)).grid(row=0, column=8)
+            
+            effect_menu = tk.OptionMenu(row, effect, *self.reminders, command=apply_effect)
+            effect_menu.config(font=("Helvetica", text_size))
+            content = effect_menu.nametowidget(effect_menu.menuname)
+            content.config(font=("Helvetica", text_size))
+            effect_menu.grid(row=0, column=6)
+                        
+            
 
         
     def show_bluffs_window(self):
@@ -359,6 +401,10 @@ class StorytellerApp:
             player.poisoned = not player.poisoned
         elif status_type == "drunk":
             player.drunk = not player.drunk
+        elif status_type in self.reminders:
+            # Toggle only the selected reminder
+            player.effects[status_type] = not player.effects.get(status_type, False)
+
         self.update_display()
 
     def advance_day(self):
@@ -520,6 +566,7 @@ class StorytellerApp:
         for i in range(num_players):
             char = selected[i]
             new_player = Player(name=f"Player {i+1}", team=char.team, character=char)
+            new_player.effects=self.init_effects.copy()
             self.players.append(new_player)
 
         self.choose_bluffs()
