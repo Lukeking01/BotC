@@ -1,0 +1,9 @@
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/botc.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/edit_cache.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/rebuild_cache.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/list_install_components.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/install.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/install/local.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/install/strip.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/botc_autogen_timestamp_deps.dir
+/home/lukas/Documents/BotC/cpp/build/CMakeFiles/botc_autogen.dir
